@@ -25,21 +25,27 @@ jobs:
       - name: Run tests
         run: go test ./...
 
-      - name: Create cross-platform builds
-        uses: cli/gh-extension-precompile@v2
-        with:
-          go_version: "1.21"
-
-      - name: Create or Update Release
+      - name: Prepare Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Delete existing release if it exists (allows re-running)
           gh release delete ${{ github.ref_name }} --yes 2>/dev/null || true
           
-          # Create new release with generated notes
+          # Create draft release with generated notes (precompile will add assets)
           gh release create ${{ github.ref_name }} \
             --title "🚀 ${{ github.ref_name }}" \
             --generate-notes \
-            --draft=false \
-            --prerelease=false
+            --draft=true
+
+      - name: Create cross-platform builds
+        uses: cli/gh-extension-precompile@v2
+        with:
+          go_version: "1.21"
+
+      - name: Publish Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Publish the draft release
+          gh release edit ${{ github.ref_name }} --draft=false
