@@ -30,10 +30,14 @@ jobs:
         with:
           go_version: "1.21"
 
-      - name: Create Release
+      - name: Create or Update Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Delete existing release if it exists (allows re-running)
+          gh release delete ${{ github.ref_name }} --yes 2>/dev/null || true
+          
+          # Create new release with generated notes
           gh release create ${{ github.ref_name }} \
             --title "🚀 ${{ github.ref_name }}" \
             --generate-notes \
