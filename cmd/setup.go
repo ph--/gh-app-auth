@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/AmadeusITGroup/gh-app-auth/pkg/config"
 	"github.com/AmadeusITGroup/gh-app-auth/pkg/jwt"
@@ -149,8 +154,19 @@ func setupGitHubApp(
 	}
 
 	// Test JWT generation to ensure key is valid
-	if err := validateJWTGeneration(appID, privateKeyContent); err != nil {
+	jwtToken, err := generateJWTForSetup(appID, privateKeyContent)
+	if err != nil {
 		return err
+	}
+
+	// Auto-detect installation ID if not provided
+	if installationID == 0 {
+		detectedID, err := autoDetectInstallationID(jwtToken, patterns)
+		if err != nil {
+			return fmt.Errorf("failed to auto-detect installation ID: %w", err)
+		}
+		installationID = detectedID
+		fmt.Printf("🔍 Auto-detected installation ID: %d\n", installationID)
 	}
 
 	// Create the GitHub App (validation happens after storage configuration)
@@ -317,13 +333,125 @@ func getPrivateKey(keyFile string) (string, string, error) {
 	return privateKeyContent, expandedKeyFile, nil
 }
 
-// validateJWTGeneration tests JWT generation to ensure the key is valid
-func validateJWTGeneration(appID int64, privateKeyContent string) error {
+// generateJWTForSetup generates a JWT token and returns it for use in setup
+func generateJWTForSetup(appID int64, privateKeyContent string) (string, error) {
 	generator := jwt.NewGenerator()
-	if _, err := generator.GenerateTokenFromKey(appID, privateKeyContent); err != nil {
-		return fmt.Errorf("JWT generation test failed: %w", err)
+	token, err := generator.GenerateTokenFromKey(appID, privateKeyContent)
+	if err != nil {
+		return "", fmt.Errorf("JWT generation test failed: %w", err)
 	}
-	return nil
+	return token, nil
+}
+
+// autoDetectInstallationID finds the installation ID for the GitHub App using the patterns
+func autoDetectInstallationID(jwtToken string, patterns []string) (int64, error) {
+	if len(patterns) == 0 {
+		return 0, fmt.Errorf("no patterns provided")
+	}
+
+	// Extract host and org from the first pattern
+	// Pattern format: "github.com/org/*" or "github.example.com/org/*"
+	pattern := patterns[0]
+	host, org, err := parsePatternForInstallation(pattern)
+	if err != nil {
+		return 0, err
+	}
+
+	// Try to find installation for the org
+	installationID, err := findInstallationForOrg(jwtToken, host, org)
+	if err != nil {
+		return 0, err
+	}
+
+	return installationID, nil
+}
+
+// parsePatternForInstallation extracts host and org from a pattern
+func parsePatternForInstallation(pattern string) (host, org string, err error) {
+	// Remove trailing wildcards and slashes
+	pattern = strings.TrimSuffix(pattern, "/*")
+	pattern = strings.TrimSuffix(pattern, "/")
+
+	// Split by /
+	parts := strings.Split(pattern, "/")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("invalid pattern format: %s (expected host/org or host/org/*)", pattern)
+	}
+
+	host = parts[0]
+	org = parts[1]
+
+	if host == "" || org == "" {
+		return "", "", fmt.Errorf("invalid pattern: host and org are required")
+	}
+
+	return host, org, nil
+}
+
+// findInstallationForOrg finds the installation ID for a GitHub App in an organization
+func findInstallationForOrg(jwtToken, host, org string) (int64, error) {
+	// Construct API URL for listing installations
+	var apiURL string
+	if host == gitHubAPIHost {
+		apiURL = "https://api.github.com/app/installations"
+	} else {
+		apiURL = fmt.Sprintf("https://%s/api/v3/app/installations", host)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to list installations: %w", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var installations []struct {
+		ID      int64 `json:"id"`
+		Account struct {
+			Login string `json:"login"`
+			Type  string `json:"type"`
+		} `json:"account"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&installations); err != nil {
+		return 0, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Find installation matching the org
+	for _, inst := range installations {
+		if strings.EqualFold(inst.Account.Login, org) {
+			return inst.ID, nil
+		}
+	}
+
+	// If no match found, provide helpful error
+	if len(installations) == 0 {
+		return 0, fmt.Errorf("no installations found for this GitHub App")
+	}
+
+	availableOrgs := make([]string, 0, len(installations))
+	for _, inst := range installations {
+		availableOrgs = append(availableOrgs, inst.Account.Login)
+	}
+	return 0, fmt.Errorf("no installation found for org '%s'. Available: %s", org, strings.Join(availableOrgs, ", "))
 }
 
 // createGitHubApp creates a GitHub App configuration
