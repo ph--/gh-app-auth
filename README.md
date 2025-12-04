@@ -125,6 +125,9 @@ See [URL Prefix Routing Guide](docs/PATTERN_ROUTING.md) for detailed examples an
 - `gh app-auth remove` - Remove GitHub App (**--app-id**) or PAT (**--pat-name**) configuration (automatically deletes encrypted keys/tokens)
 - `gh app-auth test` - Test authentication for a repository
 - `gh app-auth scope` - Detect which GitHub App will handle a repository URL (shows matched app, pattern, and git config context)
+- `gh app-auth config` - Show configuration file location and content
+  - `--path` - Show only the config file path
+  - `--show` - Display the config file content
 - `gh app-auth gitconfig` - Manage git credential helper configuration
   - `--sync` - Automatically configure git for all apps
   - `--clean` - Remove all gh-app-auth git configurations

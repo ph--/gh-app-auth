@@ -387,25 +387,28 @@ func TestExpandPath(t *testing.T) {
 	}
 }
 
-func TestValidateJWTGeneration(t *testing.T) {
+func TestGenerateJWTForSetup(t *testing.T) {
 	validKey := generateTestRSAKey(t)
 
 	t.Run("valid JWT generation", func(t *testing.T) {
-		err := validateJWTGeneration(123456, validKey)
+		token, err := generateJWTForSetup(123456, validKey)
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
+		}
+		if token == "" {
+			t.Error("Expected non-empty token")
 		}
 	})
 
 	t.Run("invalid key format", func(t *testing.T) {
-		err := validateJWTGeneration(123456, "invalid-key-content")
+		_, err := generateJWTForSetup(123456, "invalid-key-content")
 		if err == nil {
 			t.Error("Expected error for invalid key")
 		}
 	})
 
 	t.Run("empty key", func(t *testing.T) {
-		err := validateJWTGeneration(123456, "")
+		_, err := generateJWTForSetup(123456, "")
 		if err == nil {
 			t.Error("Expected error for empty key")
 		}

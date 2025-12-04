@@ -45,6 +45,7 @@ func init() {
 	rootCmd.AddCommand(NewMigrateCmd())
 	rootCmd.AddCommand(NewScopeCmd())
 	rootCmd.AddCommand(NewDebugCmd())
+	rootCmd.AddCommand(NewConfigCmd())
 
 	// Global flags
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug output")

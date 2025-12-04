@@ -135,7 +135,19 @@ func TestGitHubApp_Validate(t *testing.T) {
 			errMsg:  "app_id must be positive",
 		},
 		{
-			name: "invalid installation_id",
+			name: "valid app with auto-detect installation_id",
+			app: GitHubApp{
+				Name:           "test-app",
+				AppID:          12345,
+				InstallationID: 0, // 0 means auto-detect at runtime
+				PrivateKeyPath: "/tmp/key.pem",
+				Patterns:       []string{"github.com/org/*"},
+				Priority:       100,
+			},
+			wantErr: false,
+		},
+		{
+			name: "negative installation_id",
 			app: GitHubApp{
 				Name:           "test-app",
 				AppID:          12345,
@@ -145,7 +157,7 @@ func TestGitHubApp_Validate(t *testing.T) {
 				Priority:       100,
 			},
 			wantErr: true,
-			errMsg:  "installation_id must be positive",
+			errMsg:  "installation_id cannot be negative",
 		},
 		{
 			name: "missing private_key_path",

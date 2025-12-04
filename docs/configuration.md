@@ -1,8 +1,43 @@
 # Configuration Reference
 
-Comprehensive reference for the `~/.config/gh/extensions/gh-app-auth/config.yml` file. Describes every field for GitHub Apps and Personal Access Tokens (PATs), including Bitbucket-specific settings.
+Comprehensive reference for the gh-app-auth configuration file. Describes every field for GitHub Apps and Personal Access Tokens (PATs), including Bitbucket-specific settings.
 
-> Use `gh app-auth list --json` or open the YAML file directly to inspect your current configuration.
+---
+
+## Configuration File Location
+
+The configuration file path follows this priority:
+
+1. **Environment variable**: `GH_APP_AUTH_CONFIG` (if set)
+2. **Default location**: `~/.config/gh/extensions/gh-app-auth/config.yml`
+
+### Finding Your Config File
+
+```bash
+# Show config file path and status
+gh app-auth config
+
+# Show only the path (useful for scripts)
+gh app-auth config --path
+
+# Show the config file content
+gh app-auth config --show
+
+# Edit the config file
+$EDITOR $(gh app-auth config --path)
+```
+
+### Using a Custom Config Location
+
+```bash
+# Set custom config path
+export GH_APP_AUTH_CONFIG=/path/to/custom/config.yml
+
+# Verify it's being used
+gh app-auth config
+```
+
+> **Tip**: Use `gh app-auth list --json` or open the YAML file directly to inspect your current configuration.
 
 ---
 

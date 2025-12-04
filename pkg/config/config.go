@@ -176,8 +176,9 @@ func (g *GitHubApp) validateBasicFields() error {
 		return fmt.Errorf("app_id must be positive")
 	}
 
-	if g.InstallationID <= 0 {
-		return fmt.Errorf("installation_id must be positive")
+	// InstallationID can be 0 (auto-detected at runtime via GitHub API)
+	if g.InstallationID < 0 {
+		return fmt.Errorf("installation_id cannot be negative")
 	}
 
 	return nil

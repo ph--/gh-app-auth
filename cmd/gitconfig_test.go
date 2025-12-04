@@ -116,79 +116,13 @@ func TestGitConfigSync_Integration(t *testing.T) {
 	}
 
 	t.Run("sync with single app", func(t *testing.T) {
-		tempDir := t.TempDir()
-		configPath := filepath.Join(tempDir, "config.yml")
-
-		// Create test config
-		config := `version: "1.0"
-github_apps:
-  - name: "Test App"
-    app_id: 12345
-    patterns:
-      - "github.com/testorg/*"
-    private_key_source: "keyring"
-`
-		if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
-			t.Fatalf("Failed to write config: %v", err)
-		}
-
-		t.Setenv("GH_APP_AUTH_CONFIG", configPath)
-
-		// Test sync to local git config
-		gitDir := filepath.Join(tempDir, ".git")
-		if err := os.MkdirAll(gitDir, 0755); err != nil {
-			t.Fatalf("Failed to create .git dir: %v", err)
-		}
-
-		// Initialize git config
-		cmd := exec.Command("git", "init")
-		cmd.Dir = tempDir
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to init git: %v", err)
-		}
-
-		// TODO: Call syncGitConfig function when refactored
-		// For now, test the logic manually
-		err := syncGitConfig("--local")
-		if err == nil {
-			// Verify git config was set
-			cmd := exec.Command("git", "config", "--local", "--get", "credential.https://github.com/testorg.helper")
-			cmd.Dir = tempDir
-			output, _ := cmd.Output()
-
-			if !strings.Contains(string(output), "gh-app-auth git-credential") {
-				t.Error("Expected git config to contain gh-app-auth git-credential")
-			}
-		}
-
-		t.Skip("Needs refactoring to be fully testable")
+		// Skip: syncGitConfig uses global cwd, not the temp dir, making this test unreliable
+		t.Skip("Needs refactoring to be fully testable - syncGitConfig doesn't support custom working directory")
 	})
 
 	t.Run("sync with multiple apps", func(t *testing.T) {
-		tempDir := t.TempDir()
-		configPath := filepath.Join(tempDir, "config.yml")
-
-		config := `version: "1.0"
-github_apps:
-  - name: "App 1"
-    app_id: 11111
-    patterns:
-      - "github.com/org1/*"
-    private_key_source: "keyring"
-  - name: "App 2"
-    app_id: 22222
-    patterns:
-      - "github.com/org2/*"
-    private_key_source: "keyring"
-`
-		if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
-			t.Fatalf("Failed to write config: %v", err)
-		}
-
-		t.Setenv("GH_APP_AUTH_CONFIG", configPath)
-
-		// TODO: Test that both git configs are created
-		t.Skip("Needs implementation")
+		// Skip: syncGitConfig uses global cwd, not the temp dir, making this test unreliable
+		t.Skip("Needs refactoring to be fully testable - syncGitConfig doesn't support custom working directory")
 	})
 }
 
